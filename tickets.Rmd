@@ -1,0 +1,128 @@
+---
+title: "Ticket Frequency Analysis"
+author: "Vidal Anguiano Jr."
+date: "1/16/2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo=False}
+library('tidyverse')
+library('here')
+tickets_15
+tickets_16 <- read_csv(here('data','tickets_2016.csv')) %>% filter(notice_number != 0)
+tickets_17 <- read_csv(here('data','tickets_2017.csv')) %>% filter(notice_number != 0)
+
+incidents_16 <- filter(tickets_16, notice_number != 0) %>% 
+                group_by(notice_number, license_plate_number, issue_date) %>% 
+                summarise(count=n())
+incidents_17 <- filter(tickets_17, notice_number != 0) %>% 
+                group_by(notice_number, license_plate_number, issue_date) %>% 
+                summarise(count=n())
+```
+
+```{r}
+# Create column indicating fees doubling.
+# Create column indicating amount of fees due and paid above violation fines - could be fines paid to collections.
+
+tickets_16 <- tickets_16 %>% mutate(doubled = case_when(total_payments > fine_level1_amount | current_amount_due > fine_level1_amount ~ 1, TRUE ~ 0),
+                                    fees_due = case_when(doubled = 1 & (current_amount_due - fine_level2_amount) > 0 ~ current_amount_due - fine_level2_amount, TRUE ~ 0),
+                                    fees_paid = case_when(doubled = 1 & (total_payments - fine_level2_amount) > 0 ~ total_payments - fine_level2_amount, TRUE ~ 0))
+
+tickets_17 <- tickets_17 %>% mutate(doubled = case_when(total_payments > fine_level1_amount | current_amount_due > fine_level1_amount ~ 1, TRUE ~ 0),
+                             fees_due = case_when(doubled = 1 & (current_amount_due - fine_level2_amount) > 0 ~ current_amount_due - fine_level2_amount, TRUE ~ 0),
+                             fees_paid = case_when(doubled = 1 & (total_payments - fine_level2_amount) > 0 ~ total_payments - fine_level2_amount, TRUE ~ 0))
+```
+
+```{r}
+head(filter(tickets_17, doubled == 1 ))
+
+tickets_17 %>% group_by(notice_number, license_plate_number, issue_date) %>% summarise(tickets=n(),
+                                                                             doubled=sum(doubled),
+                                                                             fees_paid=sum(fees_paid),
+                                                                             fees_due=sum(fees_due))
+```
+
+
+```{r}
+xts_heatmap <- function(datos) {
+  datos %>%
+  setNames(c("Date","Value")) %>%
+  dplyr::mutate(
+      Year=lubridate::year(Date),
+      Month=lubridate::month(Date),
+      # I use factors here to get plot ordering in the right order
+      # without worrying about locale
+      MonthTag=factor(Month,levels=as.character(1:12),
+                      labels=c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"),ordered=TRUE),
+      # week start on Monday in my world
+      Wday=lubridate::wday(Date,week_start=1),
+      # the rev reverse here is just for the plotting order
+      WdayTag=factor(Wday,levels=rev(1:7),labels=rev(c("Mon","Tue","Wed","Thu","Fri","Sat","Sun")),ordered=TRUE),
+      Week=as.numeric(format(Date,"%W"))
+    ) %>%
+    # ok here we group by year and month and then calculate the week of the month 
+    # we are currently in
+    dplyr::group_by(Year,Month) %>% 
+    dplyr::mutate(Wmonth=1+Week-min(Week)) %>% 
+    dplyr::ungroup() %>% 
+    ggplot(aes(x=Wmonth, y=WdayTag, fill = Value)) + 
+    geom_tile(colour = "white") + 
+    facet_grid(Year~MonthTag) + 
+    scale_fill_gradient(low="blue", high="orange") +
+    labs(x="Week of Month", y=NULL)
+  }
+  
+require(quantmod)
+# Download some Data, e.g. the CBOE VIX 
+quantmod::getSymbols("^VIX",src="yahoo")
+
+# lets see
+xts_heatmap(Cl(VIX)) + labs(title="Heatmap of VIX")
+
+xts_heatmap(filter(rbind(incidents_16,incidents_17), notice_number == 5044442130)[,3:4])
+# ok
+```
+
+```{r}
+tickets_df16 <- rownames(df_16) <- tickets_16[,2]
+tickets_df17 <- rownames(df_17) <- tickets_17[,2]
+```
+
+```{r viz1}
+viz1 = read_csv(here('data','viz1.csv')) %>% filter(year<2018) %>% gather(money_type, dollars, amount_due:total_paid) %>% mutate(com_col = paste(type, money_type, sep='_')) %>% select(year, com_col, dollars)
+
+ylab <- c(25, 50, 75, 100, 150, 200, 250, 300)
+year <- unique(viz1$year)
+
+ggplot(data=viz1) + geom_bar(stat='identity', aes(x=year, y=dollars, fill=com_col)) + scale_fill_manual(values=c('#C2C4C2','#989B98','#AA2B00','#7091C9'), labels = c("All-Debts", "All-Paid", 'Sticker-Debts','Sticker-Paid')) + labs(title = "Debts owed to city (Red) for sticker violations grew drastically after 2012", subtitle = "Money Paid and Owed to City by Type of Violation (Sticker vs All Other)", caption='Source: ProPublica', x = "Year", y = "Dollars", fill = "Ticket Type\n") + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"), plot.title = element_text( size=14, face="bold")) + scale_y_continuous(labels = paste0('$',ylab, "M"), breaks = 10^6 * ylab) + scale_x_continuous(labels=year,breaks=year)
+
+ggsave('viz1.pdf', width=10,height=7)
+```
+
+```{r}
+viz2 <- read_csv(here('data','viz2.csv')) %>% filter(year<2018) %>% filter(type=='STICKER')
+
+per <- c(.3,.35,.4,.45,.5,.55)
+
+ggplot(data=viz2) + geom_point(aes(x=year, y=percent_paid, size=rev_collected), color='navy') + geom_line(aes(x=year,y=percent_paid)) + scale_size_continuous(range = c(5,14), labels=c('$20M','$25M', '$30M','$35M'), breaks=c(20000000,25000000,30000000, 35000000)) + labs(title = "Though payment rates for sticker violation tickets declined, revenue increased", subtitle = "Rate of Payment for Sticker Violations and Revenues Collected", caption='Source: ProPublica', x = "Year", y = "Payment Rate (%)", size = "Revenue Collected ($)") + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"), plot.title = element_text( size=14, face="bold")) + scale_x_continuous(labels=year,breaks=year) + scale_y_continuous(labels = paste0(per*100, "%"), breaks = per)
+
+ggsave('viz2.pdf', width=10,height=7)
+```
+
+
+
+```{r}
+viz3 <- read_csv(here('data','viz3.csv')) %>% filter(date_part<2018) %>% select(date_part, plate_violation, parking_violation, sticker_violation, cleaning_violation) %>% gather(violation, count, plate_violation:cleaning_violation) 
+
+counts <- c(100, 200, 300, 400, 500, 600, 700, 800)
+
+ggplot(viz3) + geom_line(aes(x=date_part, y=count, col=violation)) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"), plot.title = element_text( size=14, face="bold")) + labs(title = "There was a slight, though not drastic increase in sticker tickets issued", subtitle = "Comparison of Ticket Types Issued and Count Issued (2007 - 2017", caption='Source: ProPublica', x = "Year", y = "Number of Tickets Issued", color = "Violation Type") + scale_x_continuous(labels=year,breaks=year) + scale_y_continuous(labels = paste0(counts, "K"), breaks = 10^3 * counts) + scale_colour_manual(values=c(cleaning_violation="gray", plate_violation="gray", parking_violation="gray", sticker_violation="Blue"), labels = c('Cleaning', 'Parking', 'Expired Plate', 'Sticker')) 
+
+ggsave('viz3.pdf', width=10,height=7)
+```
+
