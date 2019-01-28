@@ -1,0 +1,78 @@
+---
+title: "Debts and Revenues from City Sticker Violation Fines"
+author: "Vidal Anguiano Jr."
+date: "1/27/2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r echo=FALSE, results="hide", include=FALSE}
+library('tidyverse')
+library('here')
+```
+
+In the City of Chicago, road repairs are paid for by funds collected from the sale of Vehicle City Stickers, often called the "Wheel Tax". Residents are required to purchase these city stickers and display them on their windshield as a marker of compliance with the City Sticker program. Today, drivers can purchase them for \$89 for most standard sized vehicles. Prior to 2012, if someone was caught without displaying a city sticker or with an outdated sticker, they could be fined $120. Today, motorists can be fined \$200 for not displaying a city sticker. Furthermore, because the city's ticketing practices and technology don't protect drivers from recieving duplicate tickets, drivers often end up with a ticket for the same violation in the same day or on back to back days. 
+
+When the fine was increased, the City of Chicago cited the intention of holding "scofflaws"accountable for not paying the wheel tax. They even presumed that revenues collected from city sticker violation fines would increase. Revenues did increase, by an average of over years. However, debts owed to the city by residents also grew, though to a greater degree. Debts incurred due to other traffic violations also increased, so it is still unclear whether the increase in debts for city sticker violations is attributable to the increase in the city sticker violation fine alone, even when other fines remained unchanged.
+
+```{r viz1, include=FALSE}
+viz1 = read_csv(here('data','viz1.csv')) %>% filter(year<2018) %>% gather(money_type, dollars, amount_due:total_paid) %>% mutate(com_col = paste(type, money_type, sep='_')) %>% select(year, com_col, dollars)
+
+ylab <- c(25, 50, 75, 100, 150, 200, 250, 300)
+year <- unique(viz1$year)
+```
+
+```{r}
+ggplot(data=viz1) + geom_bar(stat='identity', aes(x=year, y=dollars, fill=com_col)) + scale_fill_manual(values=c('#C2C4C2','#989B98','#AA2B00','#7091C9'), labels = c("Other-Debts", "Other-Revenue", 'Sticker-Debts','Sticker-Revenue')) + labs(title = "Debts owed to Chicago for sticker violations (red) grew more than \nrevenues (blue)", subtitle = "Revenues and debts from fines to motorists for sticker and other vehicle-related violations", caption='Source: ProPublica', x = "Year", y = "Dollars", fill = "Ticket Type\n") + theme_minimal() + theme( plot.title = element_text( size=14, face="bold")) + scale_y_continuous(labels = paste0('$',ylab, "M"), breaks = 10^6 * ylab) + scale_x_continuous(labels=year,breaks=year)
+
+```
+
+An increase in debts from city sticker violations is observed, but it is unclear so far whether it is due to the increase in the fine price alone or whether enforcement increased. We can compare enforecment levels of ticket violations, as shown below.
+
+```{r, include=FALSE}
+viz3 <- read_csv(here('data','viz3.csv')) %>% filter(date_part<2018) %>% select(date_part, cleaning_violation, plate_violation, parking_violation, sticker_violation, zone_violation, traffic_violation) %>% gather(violation, count, cleaning_violation:traffic_violation) %>% mutate(violation=factor(violation, levels=c("parking_violation", "plate_violation", "cleaning_violation", "sticker_violation", "zone_violation", "traffic_violation")))
+counts <- c(100, 200, 300, 400, 500, 600, 700, 800)
+```
+
+```{r}
+ggplot(viz3) + geom_line(aes(x=date_part, y=count, col=violation)) + theme_minimal() + theme(plot.title = element_text( size=14, face="bold")) + labs(title = "There was a slight, though not drastic increase in sticker tickets issued", subtitle = "Comparison of Ticket Types Issued and Count Issued (2007 - 2017)", caption='Source: ProPublica', x = "Year", y = "Number of Tickets Issued", color = "Violation Type") + scale_x_continuous(labels=year, breaks=year) + scale_y_continuous(labels = paste0(counts, "K"), breaks = 10^3 * counts) + scale_colour_manual(values=c(parking_violation="green", plate_violation="orange", cleaning_violation="purple", sticker_violation="Blue", zone_violation='gray', traffic_violation='red'), labels = c('Parking', 'Expired Plate', 'Cleaning', 'Sticker', 'Zone', "Traffic"))
+```
+
+Sticker violations fluctuatied by up to 50 thousand tickets between any two given years. All other ticket types also remained fairly consistent. Though there is a sharp decline in expired plate tickets in 2017, this is likely due to a data error rather than a true reflection of plate violation enforcement. Since the rate of ticket issuance remained quite constant, the next thing we can compare is rates of payment. If debts increased while ticket issuances remained constant, then payment rates must have decreased for city sticker violations.
+
+```{r, include=FALSE}
+viz2 <- read_csv(here('data','viz2.csv')) %>% filter(year<2018) %>% filter(type=='STICKER')
+per <- c(.3,.35,.4,.45,.5,.55, .6, .65, .7, .75)
+```
+
+
+```{r}
+ggplot(data=viz2) + geom_point(aes(x=year, y=percent_paid, size=debt_owed), color='orange') + geom_point(aes(x=year, y=percent_paid, size=rev_collected), color='navy') + geom_line(aes(x=year,y=percent_paid)) + scale_size_continuous(range = c(2,14), labels=c('$20M','$25M', '$30M','$35M', '$40M', '$45M', '$50M'), breaks=c(20000000,25000000,30000000, 35000000, 40000000, 45000000, 50000000)) + labs(title = "Though payment rates for sticker violation tickets declined, \nrevenue increased, but debts grew more", subtitle = "Rate of Payment for Sticker Violations, Revenues Collected (blue), and Debts Owed (orange)", caption='Source: ProPublica', x = "Year", y = "Payment Rate (%)", size = "Revenue Collected/Debt Owed ($)") + theme_minimal() + theme(plot.title = element_text( size=14, face="bold")) + scale_x_continuous(labels=year,breaks=year) + scale_y_continuous(labels = paste0(per*100, "%"), breaks = per)
+```
+
+Based on the graph above, we do find that payment rates for city sticker violations decreased by more than 20% points. Despite the lower payment rates, revenue increased. However, as can be seen by the orange bubbles, debts increased more than revenues. Each of these observations are likely due at least in part to an increase in the fine for city sticker violations.
+
+```{r, include=FALSE}
+viz4 <- read_csv(here('data','viz4.csv')) %>% filter(sticker=='STICKER') %>% filter(ticket_queue=='Bankruptcy') %>% filter(date_part<2018)
+bank <- c(6:12)
+```
+
+
+
+```{r}
+ggplot(viz4) + geom_line(aes(x=date_part,y=count)) + labs(title = "Bankruptcies skyrocket post 2012, up by nearly 4 thousand \nthe previous year", subtitle = "Tickets ending in bankruptcy from 2007 to 2017", caption='Source: ProPublica', x = "Year", y = "Tickets Ending in Bankruptcy", size = "Revenue Collected/Debt Owed ($)") + theme_minimal() + theme(plot.title = element_text( size=14, face="bold")) + scale_x_continuous(labels=year,breaks=year) + scale_y_continuous(labels = paste0(bank, "K"), breaks = bank*1000)
+```
+
+With an increase in debts owed to the city also came an increase in tickets ending in bankruptcies. Even with the upward trend in bankruptcies, it is difficult to attribute the observed trend to the increase in fine cost. It can be seen that bankruptices had already begun increasing and upward trending as early as 2010. If bankruptcies had already been on the rise prior to the fine change, it is possible that other facters in addition to the fine change also contributed to the growth of debt owed to the City of Chicago.
+
+```{r, include=FALSE}
+viz5 <- read_csv(here('data','viz5.csv')) %>% gather(type, sum, amount_due:total_payments) %>% mutate(period = factor(period, levels=c('pre-2012','post-2012')))
+dol <- c(50, 100, 150, 200, 250, 300)
+```
+
+```{r}
+ggplot(viz5) + geom_bar(stat='identity', aes(x=type, y=sum, fill=period), position="dodge") + labs(title = "Debt increased by more than twice the amount before and after 2012", subtitle = "Compariting debts and revenues pre- and post-2012", caption='Source: ProPublica', x = "Funds", y = "Dollars", fill="Period") + theme_minimal() + theme(plot.title = element_text( size=14, face="bold")) + scale_x_discrete(labels=c("Debts", "Revenues")) + scale_fill_manual(values=c('#6F6F87','#1A1A59'), labels = c('Pre-2012','Post-2012')) + scale_y_continuous(labels = paste0('$',dol,'M'), breaks = dol*1000000)
+```
+
+All in all, between 2007 to 2011 and 2012 to 2017, the amounts owed to the city due to city sticker violations more than doubled, while revenues increased by roughly 50%. While this analysis has not shown the increase in fines to be the sole contributor to the drastic increase in debts owed to the city, it is apparent that it was a contributing factor. There is certainly a correlation between the policy change and the increase of debt. As the city increases revenues from fines, policy should be set in place to ensure that people aren't overly burdened as a social cost of getting extra revenue.
