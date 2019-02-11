@@ -4,7 +4,7 @@ author: "Vidal Anguiano Jr."
 date: "1/27/2019"
 output:
   html_document: default
-  pdf_document: default
+  
 ---
 
 ```{r echo=FALSE, results="hide", include=FALSE}
@@ -17,6 +17,9 @@ library(rgdal)
 library(ggplot2)
 library(ggalt)
 library(directlabels)
+library(sf)
+library(tmap)
+library(cartogram)
 library(broom)
 library(RColorBrewer)
 library(rgeos)
@@ -84,7 +87,7 @@ bank <- c(6:12)
 
 
 ```{r}
-ggplot(viz4) + geom_line(aes(x=date_part,y=count), color='#E87E10') + labs(title = "Bankruptcies skyrocket post-2012, up by nearly 4 thousand \nthe previous year", subtitle = "Tickets ending in bankruptcy from 2007 to 2017", caption='Source: ProPublica', x = "Year", y = "Tickets Ending in Bankruptcy", size = "Revenue Collected/Debt Owed ($)") + theme_minimal() + theme(plot.title = element_text( size=20, face="bold", color='white'), panel.background = element_rect(fill = "#575757", colour = "#575757"),panel.grid.major=element_line(color='gray'), panel.grid.minor=element_line(color='gray45'), plot.background = element_rect(fill = "#575757"), text=element_text(size=14, family="Yanone Kaffeesatz", color='white'), axis.text.y=element_text(color='white'), axis.text.x=element_text(color='white'), legend.background = element_rect(fill='#575757', color='transparent'))  + scale_x_continuous(labels=year,breaks=year) + scale_y_continuous(labels = paste0(bank, "K"), breaks = bank*1000)
+ggplot(viz4) + geom_line(aes(x=date_part,y=count), color='#E87E10') + labs(title = "Bankruptcies skyrocket post-2012, up by nearly 6 thousand compared\n to pre-2012", subtitle = "Tickets ending in bankruptcy from 2007 to 2017", caption='Source: ProPublica', x = "Year", y = "Tickets Ending in Bankruptcy", size = "Revenue Collected/Debt Owed ($)") + theme_minimal() + theme(plot.title = element_text( size=20, face="bold", color='white'), panel.background = element_rect(fill = "#575757", colour = "#575757"),panel.grid.major=element_line(color='gray'), panel.grid.minor=element_line(color='gray45'), plot.background = element_rect(fill = "#575757"), text=element_text(size=14, family="Yanone Kaffeesatz", color='white'), axis.text.y=element_text(color='white'), axis.text.x=element_text(color='white'), legend.background = element_rect(fill='#575757', color='transparent'))  + scale_x_continuous(labels=year,breaks=year) + scale_y_continuous(labels = paste0(bank, "K"), breaks = bank*1000)
 ```
 
 With an increase in debts owed to the city also came an increase in tickets ending in bankruptcies. Even with the upward trend in bankruptcies, it is difficult to attribute the observed trend to the increase in fine cost. It can be seen that bankruptices had already begun increasing and upward trending as early as 2010. If bankruptcies had already been on the rise prior to the fine change, it is possible that other facters in addition to the fine change also contributed to the growth of debt owed to the City of Chicago.
@@ -103,17 +106,19 @@ All in all, between 2007 to 2011 and 2012 to 2017, the amounts owed to the city 
 ```{r, include=FALSE}
 shp <- readOGR(here("data","chicago_zip","geo_export_5d015083-a683-4ca8-8226-38c954778ae2.shp"), layer='geo_export_5d015083-a683-4ca8-8226-38c954778ae2')
 
+
+
 zip_data <- read_csv(here("data","viz6.csv")) %>% mutate(zipcode=as.character(zipcode))
 
-map_data_fortified <- fortify(shp, region='zip') %>% left_join(zip_data, by=c("id" = "zipcode"))
+map_data_fortified <- fortify(shp, region='zip') %>% left_join(zip_data, by=c("id" = "zipcode")) 
 ```
 
 ```{r}
-ggplot() + geom_polygon(data = map_data_fortified, aes(fill=avg_total_fines, x=long, y=lat, group=group)) + geom_path(data = map_data_fortified, aes(x=long, y=lat, group=group), color='black', size=0.1) + coord_equal() + coord_proj("+proj=tmerc +lat_0=36.66666666666666 +lon_0=-88.33333333333333 +k=0.9999749999999999 +x_0=300000 +y_0=0 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048006096012192 +no_defs") + scale_fill_viridis(option = "magma", direction = 1) + labs(title = "Amount owed from single ticketing \nincidents higher, on average, in city's \nsouth and west sides", caption='Source: ProPublica', x = "South", y = "West", fill="Total Fines per Incident") + theme(plot.title = element_text( size=20, face="bold", color='white'), panel.background = element_rect(fill = "#575757", colour = "#575757"),panel.grid.major=element_line(color='gray'), panel.grid.minor=element_line(color='gray45'), plot.background = element_rect(fill = "#575757"), text=element_text(size=14, family="Yanone Kaffeesatz", color='white'), axis.text.y=element_text(color='#575757'), axis.text.x=element_text(color='#575757'), legend.background = element_rect(fill='#575757')) 
+ggplot() + geom_polygon(data = map_data_fortified, aes(fill=avg_total_fines, x=long, y=lat, group=group)) + geom_path(data = map_data_fortified, aes(x=long, y=lat, group=group), color='black', size=0.1) + coord_equal() + coord_proj("+proj=tmerc +lat_0=36.66666666666666 +lon_0=-88.33333333333333 +k=0.9999749999999999 +x_0=300000 +y_0=0 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048006096012192 +no_defs") + scale_fill_viridis(option = "magma", direction = 1) + labs(title = "Amount owed from single ticketing \nincidents higher, on average, in city's \nsouth and west sides", caption='Source: ProPublica', x = "", y = "", fill="Total Fines per Incident") + theme(plot.title = element_text( size=16, face="bold", color='white'), panel.background = element_rect(fill = "#575757", colour = "#575757"),panel.grid.major=element_line(color='#575757'), panel.grid.minor=element_line(color='#575757'), plot.background = element_rect(fill = "#575757"), text=element_text(size=10, family="Yanone Kaffeesatz", color='white'), axis.text.y=element_text(color='#575757'),axis.ticks.length = unit(0, "cm"), axis.text.x=element_text(color='#575757'), legend.background = element_rect(fill='#575757')) 
 ```
 
 
-Based on the map above, it's apparent that residents on the south and west sides have higher fines due in single incidents, though having, on average, lower incomes. By a single incident, we mean that at any one time and place, they were issued 1 or more tickets. One possible interpretation is that residents on the south and west sides get ticketed more. Another plausible explanation is that poorer residents are more likely to have the fine double due to being unable to pay the fine in the first place.
+Based on the map above, it's apparent that residents on the south and west sides have higher fines due from single violation incidents, despite having, on average, lower incomes. By a single incident, we mean that at any one time and place, they were issued 1 or more tickets. One possible interpretation is that residents on the south and west sides get ticketed more. Another plausible explanation is that poorer residents are more likely to have the fine double due to being unable to pay the fine in the first place.
 ```{r, include=FALSE}
 dollars <- c(10,20,30,40,50,60)
 viz8 <- read_csv(here('data','viz8.csv')) %>% filter(year!=2018) %>% filter(!is.na(income_level)) %>% gather(type, c, payments:amount_due) %>% transform(income_level=factor(income_level,levels=c("high-income","middle-income","low-income")))
@@ -124,3 +129,42 @@ Breaking down revenues and debts owed to the city based on income over time, low
 ggplot() + geom_area(data=viz8, aes(x=year, y=c, fill=type)) + facet_grid(income_level ~ .) + scale_y_continuous(labels = paste0('$',dollars, "M"), breaks = 10^6 * dollars) + theme(plot.title = element_text( size=20, face="bold", color='white'), panel.background = element_rect(fill = "#575757", color = "#575757"), panel.grid.major=element_line(color='gray'), panel.grid.minor=element_line(color='gray45'), plot.background = element_rect(fill = "#575757"), text=element_text(size=14, family="Yanone Kaffeesatz", color='white'), axis.text.y=element_text(color='white'), axis.text.x=element_text(color='white'), legend.background = element_rect(fill='#575757')) + scale_x_continuous(labels=year, breaks=year) + scale_fill_manual(values=c('#FFF68E','#87A2FF'), labels = c("Debts", "Revenues")) + labs(title = "Most debt and ticket revenues  are from households in zipcodes where\n median income is less than $49,000", subtitle = "Median income thresholds - low-income: <= $49K; middle-income <= $80K, high-income > $80K", caption='Source: ProPublica', x = "Year", y = "Dollars ($)", fill='')
 ```
 
+```{r, include=FALSE}
+population <- read_csv(here('data','ACS_17_5YR_B01003','ACS_17_5YR_B01003.csv')) %>% mutate(zip=as.character(GEO.id2))
+
+sfshp <- readOGR(here("data","cb_2017_us_zcta510_500k","cb_2017_us_zcta510_500k.shp"), layer='cb_2017_us_zcta510_500k')
+sfshp <- sfshp[grepl("^606",sfshp$ZCTA5CE10),]
+
+sfshp_wd <- merge(merge(sfshp, population, by.x="ZCTA5CE10", by.y="zip"), zip_data, by.x='ZCTA5CE10', by.y='zipcode')
+
+carto <- cartogram_cont(sfshp_wd, 'HD01_VD01', itermax=6)
+#carto <- cartogram_dorling(sfshp_wd, "HD01_VD01")
+#carto <- cartogram_ncont(sfshp_wd, "HD01_VD01")
+
+sfshp_fortified <- fortify(carto, region='ZCTA5CE10') %>% left_join(population, by=c('id'='zip')) %>% left_join(zip_data, by=c("id" = "zipcode"))
+```
+Though much of the City's population density lies on the City's North Side, the number of city sticker tickets issued in the South far outweighs those issued in similarily populous, though denser areas of the North Side. To compare the number of issued tickets with the population size more plainly illustrates the higher issuance of tickets on the South and West Sides. Regardless of the various factors causing this phenomenon, that poorer communities are being hit with many more tickets should give policy makers pause about the effectiveness of the City's current methods of enforcing compliance among poorer residents.
+
+```{r}
+ggplot() + geom_polygon(data=sfshp_fortified, aes(fill = total_tickets, x=long, y=lat, group=group)) + geom_path(data = sfshp_fortified, aes(x=long, y=lat, group=group), color='gray', size=0.1) + coord_proj("+proj=tmerc +lat_0=36.66666666666666 +lon_0=-88.33333333333333 +k=0.9999749999999999 +x_0=300000 +y_0=0 +ellps=GRS80 +datum=NAD83 +to_meter=0.3048006096012192 +no_defs") + labs(title = "Scaling Zipcodes by Population Size Reveals \n   Disproportionate Sticker Ticketing in South and \nWest Side Communities (2017)", caption='Source: ProPublica and US Census', x = "", y = "", fill="Total Tickets") + theme(plot.title = element_text( size=14, face="bold", color='white', hjust=.5), panel.background = element_rect(fill = "#575757", colour = "#575757"),panel.grid.major=element_line(color='#575757'), panel.grid.minor=element_line(color='#575757'), plot.background = element_rect(fill = "#575757"), text=element_text(size=10, family="Yanone Kaffeesatz", color='white'), axis.text.y=element_text(color='#575757'),axis.ticks.length = unit(0, "cm"), axis.text.x=element_text(color='#575757'), legend.background = element_rect(fill='#575757')) + scale_fill_viridis(option = "cividis", direction = 1)
+```
+
+
+```{r, include=FALSE}
+viz10_data <- read_csv(here('data','viz10.csv')) %>% mutate(zipcode=as.character(zipcode)) %>% transform(income_level=factor(income_level,levels=c("high-income","middle-income","low-income")))
+
+sfshp <- readOGR(here("data","cb_2017_us_zcta510_500k","cb_2017_us_zcta510_500k.shp"), layer='cb_2017_us_zcta510_500k')
+sfshp <- sfshp[grepl("^606",sfshp$ZCTA5CE10),]
+
+sfshp_wd <- merge(sfshp, viz10_data, by.x="ZCTA5CE10", by.y="zipcode")
+
+carto <- cartogram_dorling(sfshp_wd, "amount_due")
+
+sfshp_fortified <- fortify(carto, region='ZCTA5CE10') %>% left_join(viz10_data, by=c('id'='zipcode')) 
+```
+
+The following cartogram demonstrates the stark contrast of debts owed due for city sticker violations between lower income zipcodes and the wealthier zipcodes on the city's near and far North sides. That much of the City's economic activity is generated in the Chicago's downtown area makes the difference all the more striking. The relative difference between high and middle income zipcodes pales in comparison to the difference between high and low-income.
+
+```{r}
+ggplot() + geom_polygon(data=sfshp_fortified, aes(color = income_level, x=long, y=lat, group=group)) + geom_path(data = sfshp_fortified, aes(x=long, y=lat, group=group), color='gray', size=0.1) + labs(title = "Totals of City Sticker Debt Owed\n by Drivers in Low-Income Zipcodes (2017)", caption='Source: ProPublica', x = "", y = "", fill="Total Tickets") + theme(plot.title = element_text( size=14, face="bold", color='white', hjust=.5), panel.background = element_rect(fill = "#575757", colour = "#575757"),panel.grid.major=element_line(color='#575757'), panel.grid.minor=element_line(color='#575757'), plot.background = element_rect(fill = "#575757"), text=element_text(size=10, family="Yanone Kaffeesatz", color='white'), axis.text.y=element_text(color='#575757'),axis.ticks.length = unit(0, "cm"), axis.text.x=element_text(color='#575757'), legend.background = element_rect(fill='#575757')) + scale_fill_viridis(option = "cividis", direction = 1) + coord_equal()
+```
